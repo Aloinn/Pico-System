@@ -1,4 +1,4 @@
-const forAllFruits = (fn: (f: Fruit)=>void) => {
+const forAllFruits = (fn: (f: Fruit) => void) => {
   Game.fruits.filter((fruit) => fruit.active).forEach((fruit) => fn(fruit));
 };
 

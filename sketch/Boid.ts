@@ -1,16 +1,32 @@
 ///<reference path="Pico.ts" />
+enum BoidType {
+  PASSIVE,
+  HOSTILE,
+}
 class Boid extends Pico {
+  active: boolean;
   lastAte: number;
-  constructor(x: number, y: number) {
+  type: BoidType;
+  constructor(x: number, y: number, type: BoidType) {
     super(x, y);
+
     Game.boids.push(this);
+    this.spawn(type);
   }
 
-  separateSteer(steerWeight=1){
+  spawn(type: BoidType) {
+    this.type = type;
+    this.active = true;
+    this.color = type == BoidType.HOSTILE ? "#FFB39C" : "#FFFFFF";
+    this.size = type == BoidType.HOSTILE ? 13 : 5;
+  }
+
+  separateSteer(steerWeight = 1) {
     const desiredDistance = 25.0;
     const friendsPosition: p5.Vector[] = [];
     const self = this;
     forAllBoids((boid) => {
+      if (boid.type != this.type) return;
       const d = p5.Vector.dist(self.position, boid.position);
       if (d > 0 && d < desiredDistance) {
         const diff = p5.Vector.sub(self.position, boid.position);
@@ -30,15 +46,16 @@ class Boid extends Pico {
     steer.mult(this.maxSpeed);
     steer.sub(this.velocity);
     steer.limit(this.maxForce);
-    steer.mult(steerWeight)
+    steer.mult(steerWeight);
     return steer;
   }
 
-  cohesionSteer(cohesionWeight=1){
+  cohesionSteer(cohesionWeight = 1) {
     const friendsRange = 50;
     const friendsPositions: p5.Vector[] = [];
     const self = this;
     forAllBoids((boid) => {
+      if (boid.type != this.type) return;
       const d = p5.Vector.dist(self.position, boid.position);
       return d > 0 && d < friendsRange && friendsPositions.push(boid.position);
     });
@@ -56,11 +73,12 @@ class Boid extends Pico {
     return cohesionSteer;
   }
 
-  alignSteer(alignWeight=1) {
+  alignSteer(alignWeight = 1) {
     const friendsRange = 50;
     const friendsVelocities: p5.Vector[] = [];
     const self = this;
     forAllBoids((boid) => {
+      if (boid.type != this.type) return;
       const d = p5.Vector.dist(self.position, boid.position);
       return d > 0 && d < friendsRange && friendsVelocities.push(boid.velocity);
     });
@@ -76,15 +94,15 @@ class Boid extends Pico {
       alignSteer.sub(this.velocity);
       alignSteer.limit(this.maxForce);
     }
-    alignSteer.mult( alignWeight);
+    alignSteer.mult(alignWeight);
     return alignSteer;
   }
 
-  baseSteer() {
+  baseSteer(weights = [2, 1, 1]) {
     const steer = createVector(0, 0);
-    const separationForce = this.separateSteer(2);
-    const alignForce = this.alignSteer(1);
-    const cohesionForce = this.cohesionSteer(1);
+    const separationForce = this.separateSteer(weights[0]);
+    const alignForce = this.alignSteer(weights[1]);
+    const cohesionForce = this.cohesionSteer(weights[2]);
     steer.add(separationForce);
     steer.add(alignForce);
     steer.add(cohesionForce);
@@ -92,5 +110,10 @@ class Boid extends Pico {
     Game.debug && drawVector(this.position, alignForce, "blue");
     Game.debug && drawVector(this.position, cohesionForce, "green");
     return steer;
+  }
+
+  disable() {
+    Game.boidsPool.push(this);
+    this.active = false;
   }
 }

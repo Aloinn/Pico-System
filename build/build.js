@@ -65,19 +65,34 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var BoidType;
+(function (BoidType) {
+    BoidType[BoidType["PASSIVE"] = 0] = "PASSIVE";
+    BoidType[BoidType["HOSTILE"] = 1] = "HOSTILE";
+})(BoidType || (BoidType = {}));
 var Boid = (function (_super) {
     __extends(Boid, _super);
-    function Boid(x, y) {
+    function Boid(x, y, type) {
         var _this = _super.call(this, x, y) || this;
         Game.boids.push(_this);
+        _this.spawn(type);
         return _this;
     }
+    Boid.prototype.spawn = function (type) {
+        this.type = type;
+        this.active = true;
+        this.color = type == BoidType.HOSTILE ? "#FFB39C" : "#FFFFFF";
+        this.size = type == BoidType.HOSTILE ? 13 : 5;
+    };
     Boid.prototype.separateSteer = function (steerWeight) {
+        var _this = this;
         if (steerWeight === void 0) { steerWeight = 1; }
         var desiredDistance = 25.0;
         var friendsPosition = [];
         var self = this;
         forAllBoids(function (boid) {
+            if (boid.type != _this.type)
+                return;
             var d = p5.Vector.dist(self.position, boid.position);
             if (d > 0 && d < desiredDistance) {
                 var diff = p5.Vector.sub(self.position, boid.position);
@@ -98,11 +113,14 @@ var Boid = (function (_super) {
         return steer;
     };
     Boid.prototype.cohesionSteer = function (cohesionWeight) {
+        var _this = this;
         if (cohesionWeight === void 0) { cohesionWeight = 1; }
         var friendsRange = 50;
         var friendsPositions = [];
         var self = this;
         forAllBoids(function (boid) {
+            if (boid.type != _this.type)
+                return;
             var d = p5.Vector.dist(self.position, boid.position);
             return d > 0 && d < friendsRange && friendsPositions.push(boid.position);
         });
@@ -115,11 +133,14 @@ var Boid = (function (_super) {
         return cohesionSteer;
     };
     Boid.prototype.alignSteer = function (alignWeight) {
+        var _this = this;
         if (alignWeight === void 0) { alignWeight = 1; }
         var friendsRange = 50;
         var friendsVelocities = [];
         var self = this;
         forAllBoids(function (boid) {
+            if (boid.type != _this.type)
+                return;
             var d = p5.Vector.dist(self.position, boid.position);
             return d > 0 && d < friendsRange && friendsVelocities.push(boid.velocity);
         });
@@ -134,11 +155,12 @@ var Boid = (function (_super) {
         alignSteer.mult(alignWeight);
         return alignSteer;
     };
-    Boid.prototype.baseSteer = function () {
+    Boid.prototype.baseSteer = function (weights) {
+        if (weights === void 0) { weights = [2, 1, 1]; }
         var steer = createVector(0, 0);
-        var separationForce = this.separateSteer(2);
-        var alignForce = this.alignSteer(1);
-        var cohesionForce = this.cohesionSteer(1);
+        var separationForce = this.separateSteer(weights[0]);
+        var alignForce = this.alignSteer(weights[1]);
+        var cohesionForce = this.cohesionSteer(weights[2]);
         steer.add(separationForce);
         steer.add(alignForce);
         steer.add(cohesionForce);
@@ -147,15 +169,16 @@ var Boid = (function (_super) {
         Game.debug && drawVector(this.position, cohesionForce, "green");
         return steer;
     };
+    Boid.prototype.disable = function () {
+        Game.boidsPool.push(this);
+        this.active = false;
+    };
     return Boid;
 }(Pico));
 var forAllBoids = function (fn) {
-    Game.boids.forEach(function (boid) {
+    Game.boids.filter(function (boid) { return boid.active; }).forEach(function (boid) {
         fn(boid);
     });
-};
-var createPlayer = function () {
-    var player = new Boid(windowWidth / 2, windowHeight / 2);
 };
 var applyAvoidPlayerSteer = function (boid, weight) {
     if (!Game.player)
@@ -166,11 +189,29 @@ var applyAvoidPlayerSteer = function (boid, weight) {
         boid.acceleration.add(pushForce);
     }
 };
-var applyFruitSteerToBoid = function (boid) {
+var applyTowardPlayerSteer = function (boid, weight) {
+    if (!Game.player)
+        return;
+    if (playerInRange(boid, 400)) {
+        var pushForce = p5.Vector.mult(boid.seek(Game.player.position), 1 * weight);
+        Game.debug && drawVector(boid.position, pushForce, "red");
+        boid.acceleration.add(pushForce);
+    }
+};
+var applyTowardBoidSteer = function (boid, weight) {
+    var _closestBoid = closestBoid(boid.position, BoidType.PASSIVE);
+    if (_closestBoid) {
+        var pullForce = p5.Vector.mult(boid.seek(_closestBoid.position), 1 * weight);
+        Game.debug && drawVector(boid.position, pullForce, "blue");
+        boid.acceleration.add(pullForce);
+    }
+};
+var applyFruitSteerToBoid = function (boid, weight) {
+    if (weight === void 0) { weight = 2; }
     var full = millis() / 1000 - boid.lastAte > 5;
     var fruit = closestFruit(boid.position);
     if (fruit && !full) {
-        var attractionForce = p5.Vector.mult(boid.seek(fruit.position), 2);
+        var attractionForce = p5.Vector.mult(boid.seek(fruit.position), weight);
         Game.debug && drawVector(boid.position, attractionForce, "white");
         boid.acceleration.add(attractionForce);
     }
@@ -178,6 +219,28 @@ var applyFruitSteerToBoid = function (boid) {
 var playerInRange = function (boid, range) {
     if (range === void 0) { range = 200; }
     return p5.Vector.sub(Game.player.position, boid.position).mag() < range;
+};
+var closestBoid = function (position, type) {
+    var closeBoids = Game.boids.filter(function (boid) {
+        return boid.type == type && p5.Vector.sub(position, boid.position).mag() < 300;
+    });
+    if (closeBoids.length == 0)
+        return;
+    var _closestBoid = closeBoids.reduce(function (pBoid, cBoid) {
+        return p5.Vector.sub(position, pBoid.position).mag() <
+            p5.Vector.sub(position, cBoid.position).mag()
+            ? pBoid
+            : cBoid;
+    }, closeBoids[0]);
+    return _closestBoid;
+};
+var spawnBoidRandomly = function () {
+    if (frameCount % 30 == 0) {
+        if (Game.fruitsPool.length != 0) {
+            var fruit = Game.fruitsPool.pop();
+            fruit.spawn();
+        }
+    }
 };
 var Point = (function () {
     function Point(x, y) {
@@ -262,9 +325,9 @@ var Game = (function () {
     function Game() {
     }
     Game.prototype.init = function () {
-        Game.player = new Player(windowWidth / 2, windowHeight / 2);
+        Game.player = new Player(windowWidth / 2 - 100, windowHeight / 2);
         Game.UI = new UI();
-        __spreadArrays(Array(10)).map(function () { return new Boid(windowWidth / 2, windowHeight / 2); });
+        __spreadArrays(Array(10)).map(function (_, i) { return new Boid(windowWidth / 2, windowHeight / 2, BoidType.PASSIVE); });
         __spreadArrays(Array(20)).map(function () { return new Fruit(random(windowWidth), random(windowHeight)); });
     };
     Game.prototype.loop = function () {
@@ -272,9 +335,17 @@ var Game = (function () {
         Game.player.update();
         Game.player.wrapAround();
         forAllBoids(function (boid) {
-            boid.acceleration.add(boid.baseSteer());
-            applyFruitSteerToBoid(boid);
-            applyAvoidPlayerSteer(boid, 3);
+            if (boid.type == BoidType.PASSIVE) {
+                boid.acceleration.add(boid.baseSteer());
+                applyFruitSteerToBoid(boid);
+                applyAvoidPlayerSteer(boid, 3);
+            }
+            if (boid.type == BoidType.HOSTILE) {
+                boid.acceleration.add(boid.baseSteer([5, 1, 1]));
+                applyTowardPlayerSteer(boid, 2);
+                applyTowardBoidSteer(boid, 4);
+                boid.speedMult = 0.95;
+            }
             boid.update();
             boid.wrapAround();
         });
@@ -288,7 +359,6 @@ var Game = (function () {
         pop();
         noFill();
         translate(width / 2 - Game.player.position.x, height / 2 - Game.player.position.y);
-        rect(0, 0, width, height);
         forAllBoids(function (boid) { return boid.draw(); });
         forAllFruits(function (fruit) { return fruit.draw(); });
         Game.player.draw();
@@ -297,6 +367,7 @@ var Game = (function () {
     };
     Game.debug = false;
     Game.boids = [];
+    Game.boidsPool = [];
     Game.fruits = [];
     Game.fruitsPool = [];
     return Game;
@@ -306,6 +377,7 @@ var Player = (function (_super) {
     function Player(x, y) {
         var _this = _super.call(this, x, y) || this;
         _this.maxSpeed = _this.maxSpeed * 1.15;
+        _this.size = 8;
         _this.color = "#CEFFC8";
         return _this;
     }
@@ -316,9 +388,14 @@ var Player = (function (_super) {
     Player.prototype.update = function () {
         _super.prototype.update.call(this);
         var _closestFruit = closestFruit(this.position);
-        if (_closestFruit && p5.Vector.sub(_closestFruit.position, this.position).mag() < _closestFruit.size) {
+        if (_closestFruit &&
+            p5.Vector.sub(_closestFruit.position, this.position).mag() <
+                _closestFruit.size) {
             _closestFruit.disable();
-            this.size += 1;
+        }
+        var _closestBoid = closestBoid(this.position, BoidType.PASSIVE);
+        if (_closestBoid &&
+            p5.Vector.sub(_closestBoid.position, this.position).mag() < this.size) {
         }
     };
     return Player;
@@ -327,12 +404,12 @@ var UI = (function () {
     function UI() {
     }
     UI.prototype.draw = function () {
-        this.drawFoodChain(4, 6);
+        this.drawFoodChain(4, 4);
     };
     UI.prototype.drawFoodChain = function (fillAmount, classes) {
         var _x = width / classes;
         var Y = 40;
-        var _xoff = width / 6 / 2;
+        var _xoff = _x / 2;
         pop();
         var COLOR = "#4EE094";
         var WHITE = "#FFFFFF";
@@ -358,9 +435,15 @@ var UI = (function () {
     return UI;
 }());
 var _wrapAroundMap = [
-    new Point(-1, -1), new Point(0, -1), new Point(1, -1),
-    new Point(-1, 0), new Point(0, 0), new Point(1, 0),
-    new Point(-1, 1), new Point(0, 1), new Point(1, 1)
+    new Point(-1, -1),
+    new Point(0, -1),
+    new Point(1, -1),
+    new Point(-1, 0),
+    new Point(0, 0),
+    new Point(1, 0),
+    new Point(-1, 1),
+    new Point(0, 1),
+    new Point(1, 1),
 ];
 var wrapAroundMap;
 var forEachQuad = function (fn) {
@@ -369,7 +452,9 @@ var forEachQuad = function (fn) {
 function setup() {
     createCanvas(windowWidth, windowHeight);
     var dim = new Point(width, height);
-    wrapAroundMap = _wrapAroundMap.map(function (v) { return createVector(dim.x * v.x, dim.y * v.y); });
+    wrapAroundMap = _wrapAroundMap.map(function (v) {
+        return createVector(dim.x * v.x, dim.y * v.y);
+    });
     Game.main = new Game();
     Game.main.init();
 }

@@ -2,11 +2,12 @@ class Player extends Pico {
  constructor(x: number, y: number) {
    super(x, y);
    this.maxSpeed=this.maxSpeed*1.15;
+   this.color="#CEFFC8"
  }
 
  applyMouseSteer(weight = 1) {
    this.acceleration.add(
-     p5.Vector.mult(this.seek(createVector(mouseX, mouseY)), weight)
+     p5.Vector.mult(this.seek(p5.Vector.add(createVector(mouseX-width/2, mouseY-height/2),Game.player.position)), weight)
    );
  }
 

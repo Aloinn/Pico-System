@@ -88,9 +88,9 @@ class Boid extends Pico {
     steer.add(separationForce);
     steer.add(alignForce);
     steer.add(cohesionForce);
-    drawVector(this.position, separationForce, "red");
-    drawVector(this.position, alignForce, "blue");
-    drawVector(this.position, cohesionForce, "green");
+    Game.debug && drawVector(this.position, separationForce, "red");
+    Game.debug && drawVector(this.position, alignForce, "blue");
+    Game.debug && drawVector(this.position, cohesionForce, "green");
     return steer;
   }
 }

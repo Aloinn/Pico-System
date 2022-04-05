@@ -1,6 +1,7 @@
 class Pico {
  acceleration: p5.Vector; velocity: p5.Vector; position: p5.Vector;
  size: number; maxSpeed: number; maxForce: number; speedMult: number;
+ color: string;
  constructor(x: number, y: number) {
    this.acceleration = createVector(0, 0);
    this.velocity = createVector(random(-1, 1), random(-1, 1));
@@ -9,6 +10,7 @@ class Pico {
    this.maxSpeed = 3;
    this.maxForce = 0.05;
    this.speedMult = 1;
+   this.color = "#ffffff";
  }
 
  update() {
@@ -16,14 +18,17 @@ class Pico {
    this.velocity.limit(this.maxSpeed);
    this.velocity.mult(this.speedMult);
    this.position.add(
-     p5.Vector.div(p5.Vector.mult(this.velocity, 3), Math.min(this.speedMult,this.size/5) )
+     p5.Vector.div(p5.Vector.mult(this.velocity, 1), Math.min(this.speedMult,this.size/5) )
    );
    this.acceleration.mult(0);
  }
 
  draw() {
+   forEachQuad(q=>{
    push();
-   translate(this.position.x, this.position.y);
+   noStroke();
+   fill(this.color)
+   translate(q.x+ this.position.x, q.y+this.position.y);
    rotate(this.velocity.heading() + radians(90));
    beginShape();
    vertex(0, -this.size * 2);
@@ -31,6 +36,7 @@ class Pico {
    vertex(this.size, this.size * 2);
    endShape(CLOSE);
    pop();
+   })
  }
 
  seek(target: p5.Vector) {
@@ -43,9 +49,9 @@ class Pico {
  }
 
  wrapAround() {
-   if (this.position.x < -this.size) this.position.x = width + this.size;
-   if (this.position.y < -this.size) this.position.y = height + this.size;
-   if (this.position.x > width + this.size) this.position.x = -this.size;
-   if (this.position.y > height + this.size) this.position.y = -this.size;
+   if (this.position.x < 0) this.position.x = width
+   if (this.position.y < 0) this.position.y = height
+   if (this.position.x > width ) this.position.x = 0
+   if (this.position.y > height ) this.position.y = 0
  }
 }

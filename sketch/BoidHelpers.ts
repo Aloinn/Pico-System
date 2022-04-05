@@ -16,7 +16,7 @@ const applyAvoidPlayerSteer = (boid: Boid, weight: number) => {
      boid.seek(Game.player.position),
      -1 * weight
    );
-   drawVector(boid.position, pushForce, "red");
+   Game.debug && drawVector(boid.position, pushForce, "red");
    boid.acceleration.add(pushForce);
  }
 };
@@ -28,7 +28,7 @@ const applyFruitSteerToBoid = (boid: Boid) => {
  if (fruit && !full) {
    // circle(fruit.position.x,fruit.position.y, 50)
    const attractionForce = p5.Vector.mult(boid.seek(fruit.position), 2);
-   drawVector(boid.position, attractionForce, "white");
+   Game.debug && drawVector(boid.position, attractionForce, "white");
    boid.acceleration.add(attractionForce);
  }
 };

@@ -1,5 +1,7 @@
 class Game {
  static main: Game;
+ static debug = false;
+ static UI: UI;
  static boids: Boid[] = [];
  static fruits: Fruit[] = [];
  static fruitsPool: Fruit[] = [];
@@ -7,6 +9,7 @@ class Game {
  init() {
    // PLAYER BOID
    Game.player = new Player(windowWidth/2, windowHeight/2);
+   Game.UI = new UI();
 
    // NPC BOID
    [...Array(10)].map(
@@ -20,6 +23,7 @@ class Game {
  loop() {
    Game.player.applyMouseSteer(2);
    Game.player.update();
+   Game.player.wrapAround();
 
    // APPLY TO BOIDS
    forAllBoids((boid) => {
@@ -44,8 +48,23 @@ class Game {
 
  draw() {
    // APPLY TO BOIDS
-   Game.player.draw();
+   console.log(mouseX, mouseY)
+  //  pop()
+  //  noFill();
+  //  translate(width/2-Game.player.position.x, height/2-Game.player.position.y)
+  //  rect(0,0,width,height);
+  //  push();
+   pop();   
+   noFill();
+   translate(width/2-Game.player.position.x, height/2-Game.player.position.y)
+   rect(0,0,width,height);
+  //  const T = width
+   
    forAllBoids((boid) => boid.draw());
    forAllFruits((fruit) => fruit.draw());
+   Game.player.draw();
+   Game.UI.draw();
+
+   push();
  }
 }

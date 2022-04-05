@@ -7,24 +7,30 @@ var Pico = (function () {
         this.maxSpeed = 3;
         this.maxForce = 0.05;
         this.speedMult = 1;
+        this.color = "#ffffff";
     }
     Pico.prototype.update = function () {
         this.velocity.add(this.acceleration);
         this.velocity.limit(this.maxSpeed);
         this.velocity.mult(this.speedMult);
-        this.position.add(p5.Vector.div(p5.Vector.mult(this.velocity, 3), Math.min(this.speedMult, this.size / 5)));
+        this.position.add(p5.Vector.div(p5.Vector.mult(this.velocity, 1), Math.min(this.speedMult, this.size / 5)));
         this.acceleration.mult(0);
     };
     Pico.prototype.draw = function () {
-        push();
-        translate(this.position.x, this.position.y);
-        rotate(this.velocity.heading() + radians(90));
-        beginShape();
-        vertex(0, -this.size * 2);
-        vertex(-this.size, this.size * 2);
-        vertex(this.size, this.size * 2);
-        endShape(CLOSE);
-        pop();
+        var _this = this;
+        forEachQuad(function (q) {
+            push();
+            noStroke();
+            fill(_this.color);
+            translate(q.x + _this.position.x, q.y + _this.position.y);
+            rotate(_this.velocity.heading() + radians(90));
+            beginShape();
+            vertex(0, -_this.size * 2);
+            vertex(-_this.size, _this.size * 2);
+            vertex(_this.size, _this.size * 2);
+            endShape(CLOSE);
+            pop();
+        });
     };
     Pico.prototype.seek = function (target) {
         var d = p5.Vector.sub(target, this.position);
@@ -35,14 +41,14 @@ var Pico = (function () {
         return steer;
     };
     Pico.prototype.wrapAround = function () {
-        if (this.position.x < -this.size)
-            this.position.x = width + this.size;
-        if (this.position.y < -this.size)
-            this.position.y = height + this.size;
-        if (this.position.x > width + this.size)
-            this.position.x = -this.size;
-        if (this.position.y > height + this.size)
-            this.position.y = -this.size;
+        if (this.position.x < 0)
+            this.position.x = width;
+        if (this.position.y < 0)
+            this.position.y = height;
+        if (this.position.x > width)
+            this.position.x = 0;
+        if (this.position.y > height)
+            this.position.y = 0;
     };
     return Pico;
 }());
@@ -136,9 +142,9 @@ var Boid = (function (_super) {
         steer.add(separationForce);
         steer.add(alignForce);
         steer.add(cohesionForce);
-        drawVector(this.position, separationForce, "red");
-        drawVector(this.position, alignForce, "blue");
-        drawVector(this.position, cohesionForce, "green");
+        Game.debug && drawVector(this.position, separationForce, "red");
+        Game.debug && drawVector(this.position, alignForce, "blue");
+        Game.debug && drawVector(this.position, cohesionForce, "green");
         return steer;
     };
     return Boid;
@@ -156,7 +162,7 @@ var applyAvoidPlayerSteer = function (boid, weight) {
         return;
     if (playerInRange(boid, 250)) {
         var pushForce = p5.Vector.mult(boid.seek(Game.player.position), -1 * weight);
-        drawVector(boid.position, pushForce, "red");
+        Game.debug && drawVector(boid.position, pushForce, "red");
         boid.acceleration.add(pushForce);
     }
 };
@@ -165,7 +171,7 @@ var applyFruitSteerToBoid = function (boid) {
     var fruit = closestFruit(boid.position);
     if (fruit && !full) {
         var attractionForce = p5.Vector.mult(boid.seek(fruit.position), 2);
-        drawVector(boid.position, attractionForce, "white");
+        Game.debug && drawVector(boid.position, attractionForce, "white");
         boid.acceleration.add(attractionForce);
     }
 };
@@ -173,6 +179,13 @@ var playerInRange = function (boid, range) {
     if (range === void 0) { range = 200; }
     return p5.Vector.sub(Game.player.position, boid.position).mag() < range;
 };
+var Point = (function () {
+    function Point(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+    return Point;
+}());
 var Fruit = (function () {
     function Fruit(x, y) {
         Game.fruits.push(this);
@@ -186,13 +199,16 @@ var Fruit = (function () {
         this.position = createVector(random(windowWidth), random(windowHeight));
     };
     Fruit.prototype.draw = function () {
+        var _this = this;
         if (!this.active)
             return;
-        push();
-        translate(this.position.x, this.position.y);
-        fill("#00b894");
-        circle(0, 0, this.size);
-        pop();
+        forEachQuad(function (q) {
+            push();
+            translate(q.x + _this.position.x, q.y + _this.position.y);
+            fill("#00b894");
+            circle(0, 0, _this.size);
+            pop();
+        });
     };
     Fruit.prototype.update = function () {
         var _this = this;
@@ -247,12 +263,14 @@ var Game = (function () {
     }
     Game.prototype.init = function () {
         Game.player = new Player(windowWidth / 2, windowHeight / 2);
+        Game.UI = new UI();
         __spreadArrays(Array(10)).map(function () { return new Boid(windowWidth / 2, windowHeight / 2); });
         __spreadArrays(Array(20)).map(function () { return new Fruit(random(windowWidth), random(windowHeight)); });
     };
     Game.prototype.loop = function () {
         Game.player.applyMouseSteer(2);
         Game.player.update();
+        Game.player.wrapAround();
         forAllBoids(function (boid) {
             boid.acceleration.add(boid.baseSteer());
             applyFruitSteerToBoid(boid);
@@ -266,10 +284,18 @@ var Game = (function () {
         spawnFruitRandomly();
     };
     Game.prototype.draw = function () {
-        Game.player.draw();
+        console.log(mouseX, mouseY);
+        pop();
+        noFill();
+        translate(width / 2 - Game.player.position.x, height / 2 - Game.player.position.y);
+        rect(0, 0, width, height);
         forAllBoids(function (boid) { return boid.draw(); });
         forAllFruits(function (fruit) { return fruit.draw(); });
+        Game.player.draw();
+        Game.UI.draw();
+        push();
     };
+    Game.debug = false;
     Game.boids = [];
     Game.fruits = [];
     Game.fruitsPool = [];
@@ -280,11 +306,12 @@ var Player = (function (_super) {
     function Player(x, y) {
         var _this = _super.call(this, x, y) || this;
         _this.maxSpeed = _this.maxSpeed * 1.15;
+        _this.color = "#CEFFC8";
         return _this;
     }
     Player.prototype.applyMouseSteer = function (weight) {
         if (weight === void 0) { weight = 1; }
-        this.acceleration.add(p5.Vector.mult(this.seek(createVector(mouseX, mouseY)), weight));
+        this.acceleration.add(p5.Vector.mult(this.seek(p5.Vector.add(createVector(mouseX - width / 2, mouseY - height / 2), Game.player.position)), weight));
     };
     Player.prototype.update = function () {
         _super.prototype.update.call(this);
@@ -296,13 +323,59 @@ var Player = (function (_super) {
     };
     return Player;
 }(Pico));
+var UI = (function () {
+    function UI() {
+    }
+    UI.prototype.draw = function () {
+        this.drawFoodChain(4, 6);
+    };
+    UI.prototype.drawFoodChain = function (fillAmount, classes) {
+        var _x = width / classes;
+        var Y = 40;
+        var _xoff = width / 6 / 2;
+        pop();
+        var COLOR = "#4EE094";
+        var WHITE = "#FFFFFF";
+        strokeWeight(20);
+        fill(WHITE);
+        stroke(WHITE);
+        line(_xoff, Y, width - _xoff, Y);
+        noStroke();
+        for (var i = 0; i < classes; i += 1) {
+            circle(_x * i + _xoff, Y, 40);
+        }
+        fill(COLOR);
+        for (var i = 0; i < classes; i += 1) {
+            circle(_x * i + _xoff, Y, 30);
+        }
+        strokeWeight(10);
+        line(_xoff, Y, width - _xoff, Y);
+        strokeWeight(10);
+        stroke(COLOR);
+        line(_xoff, Y, width - _xoff, Y);
+        push();
+    };
+    return UI;
+}());
+var _wrapAroundMap = [
+    new Point(-1, -1), new Point(0, -1), new Point(1, -1),
+    new Point(-1, 0), new Point(0, 0), new Point(1, 0),
+    new Point(-1, 1), new Point(0, 1), new Point(1, 1)
+];
+var wrapAroundMap;
+var forEachQuad = function (fn) {
+    wrapAroundMap.forEach(function (q) { return fn(q); });
+};
 function setup() {
     createCanvas(windowWidth, windowHeight);
+    var dim = new Point(width, height);
+    wrapAroundMap = _wrapAroundMap.map(function (v) { return createVector(dim.x * v.x, dim.y * v.y); });
     Game.main = new Game();
     Game.main.init();
 }
 function draw() {
     background(200);
+    noFill();
     Game.main.loop();
     Game.main.draw();
 }

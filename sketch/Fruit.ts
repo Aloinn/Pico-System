@@ -1,3 +1,12 @@
+
+class Point {
+  x: number;
+  y: number;
+  constructor(x:number,y:number){this.x=x;this.y=y;}
+}
+
+
+
 class Fruit {
  active: boolean;
  size: number;
@@ -16,13 +25,17 @@ class Fruit {
  }
 
  draw() {
+   
    if (!this.active) return;
-   push();
-   translate(this.position.x, this.position.y);
+   
+   forEachQuad(q=>{
+    push();
+   translate(q.x+this.position.x, q.y+this.position.y);
    // noStroke();
    fill("#00b894");
    circle(0, 0, this.size);
    pop();
+  })
  }
 
  update() {

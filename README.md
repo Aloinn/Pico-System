@@ -1,6 +1,7 @@
 ![PICO-SYSTEM](/imgs/cover.gif)
 # <div align="center">PICO SYSTEM - RTA 222 Final Project</div>
-
+### Try out the demo!
+https://aloinn.github.io/Pico-System/
 ## <div align="center">Test Locally</div>
 This project uses P5.js with TypeScript <br/>
 Try this repository out locally:  <br/>

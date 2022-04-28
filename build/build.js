@@ -13,7 +13,7 @@ var Pico = (function () {
         this.velocity.add(this.acceleration);
         this.velocity.limit(this.maxSpeed);
         this.velocity.mult(this.speedMult);
-        this.position.add(p5.Vector.div(p5.Vector.mult(this.velocity, 1), Math.min(this.speedMult, this.size / 5)));
+        this.position.add(p5.Vector.div(p5.Vector.mult(this.velocity, 1), Math.min(this.speedMult, this.size)));
         this.acceleration.mult(0);
     };
     Pico.prototype.draw = function () {
@@ -22,12 +22,34 @@ var Pico = (function () {
             push();
             fill(_this.color);
             translate(q.x + _this.position.x, q.y + _this.position.y);
-            rotate(_this.velocity.heading() + radians(90));
-            beginShape();
-            vertex(0, -_this.size * 2);
-            vertex(-_this.size, _this.size * 2);
-            vertex(_this.size, _this.size * 2);
-            endShape(CLOSE);
+            rotate(_this.velocity.heading() + radians(270));
+            translate(0, -_this.size * 1);
+            if (Math.floor(frameCount / 15) % 2 != 0) {
+                beginShape();
+                vertex(-_this.size * 1.5, -_this.size * 3);
+                vertex(_this.size * 1.5, -_this.size * 3);
+                vertex(0, -_this.size * 2);
+                endShape(CLOSE);
+                beginShape();
+                vertex(0, -_this.size * 2);
+                vertex(-_this.size, _this.size * 4);
+                vertex(0, _this.size * 3);
+                vertex(_this.size, _this.size * 4);
+                endShape(CLOSE);
+            }
+            else {
+                beginShape();
+                vertex(-_this.size * 1.5, -_this.size * 3);
+                vertex(_this.size * 1.5, -_this.size * 3);
+                vertex(0, -_this.size * 2);
+                endShape(CLOSE);
+                beginShape();
+                vertex(0, -_this.size * 2);
+                vertex(-_this.size, _this.size * 3);
+                vertex(0, _this.size * 4);
+                vertex(_this.size, _this.size * 3);
+                endShape(CLOSE);
+            }
             pop();
         });
     };
@@ -78,11 +100,8 @@ var Boid = (function (_super) {
         return _this;
     }
     Boid.prototype.spawn = function (type) {
-        this.type = type;
         this.active = true;
-        this.color = type == BoidType.HOSTILE ? COLORS.RED : COLORS.WHITE;
-        this.size = type == BoidType.HOSTILE ? 20 : 8;
-        this.speedMult = type == BoidType.HOSTILE ? 0.7 : 1;
+        this.convert(type);
         while (true) {
             var pos = createVector(random(windowWidth), random(windowHeight));
             if (pos.dist(Game.player.position) > 200) {
@@ -90,6 +109,12 @@ var Boid = (function (_super) {
                 break;
             }
         }
+    };
+    Boid.prototype.convert = function (type) {
+        this.type = type;
+        this.color = type == BoidType.HOSTILE ? COLORS.RED : COLORS.WHITE;
+        this.size = type == BoidType.HOSTILE ? 20 : 8;
+        this.speedMult = type == BoidType.HOSTILE ? 0.9 : 1;
     };
     Boid.prototype.draw = function () {
         if (this.type == BoidType.PASSIVE) {
@@ -113,7 +138,7 @@ var Boid = (function (_super) {
     Boid.prototype.separateSteer = function (steerWeight) {
         var _this = this;
         if (steerWeight === void 0) { steerWeight = 1; }
-        var desiredDistance = 25.0;
+        var desiredDistance = this.size * 3;
         var friendsPosition = [];
         var self = this;
         forAllBoids(function (boid) {
@@ -208,19 +233,19 @@ var forAllBoids = function (fn) {
         fn(boid);
     });
 };
-var applyAvoidPlayerSteer = function (boid, weight) {
+var applyAvoidPlayerSteer = function (boid, weight, maxDistance) {
     if (!Game.player)
         return;
-    if (playerInRange(boid, 250)) {
+    if (playerInRange(boid, maxDistance || 400)) {
         var pushForce = p5.Vector.mult(boid.seek(Game.player.position), -1 * weight);
         Game.debug && drawVector(boid.position, pushForce, "red");
         boid.acceleration.add(pushForce);
     }
 };
-var applyTowardPlayerSteer = function (boid, weight) {
+var applyTowardPlayerSteer = function (boid, weight, maxDistance) {
     if (!Game.player)
         return;
-    if (playerInRange(boid, 400)) {
+    if (playerInRange(boid, maxDistance || 400)) {
         var pushForce = p5.Vector.mult(boid.seek(Game.player.position), 1 * weight);
         Game.debug && drawVector(boid.position, pushForce, "red");
         boid.acceleration.add(pushForce);
@@ -246,7 +271,9 @@ var applyFruitSteerToBoid = function (boid, weight) {
 };
 var playerInRange = function (boid, range) {
     if (range === void 0) { range = 200; }
-    return p5.Vector.sub(Game.player.position, boid.position).mag() < range;
+    return range == -1
+        ? true
+        : p5.Vector.sub(Game.player.position, boid.position).mag() < range;
 };
 var closestBoid = function (position, type) {
     var closeBoids = Game.boids.filter(function (boid) {
@@ -256,30 +283,40 @@ var closestBoid = function (position, type) {
     });
     if (closeBoids.length == 0)
         return;
-    var _closestBoid = closeBoids.reduce(function (pBoid, cBoid) {
+    return closeBoids.reduce(function (pBoid, cBoid) {
         return p5.Vector.sub(position, pBoid.position).mag() <
             p5.Vector.sub(position, cBoid.position).mag()
             ? pBoid
             : cBoid;
     }, closeBoids[0]);
-    return _closestBoid;
 };
 var spawnBoidRandomly = function () {
     if (frameCount % 30 == 0) {
         if (Game.boidsPool.length != 0) {
             var boid = Game.boidsPool.pop();
-            boid.spawn(Game.hostiles < 5 ? BoidType.HOSTILE : BoidType.PASSIVE);
-            Game.hostiles += Game.hostiles < 5 ? 1 : 0;
+            if (Game.hostiles < 5) {
+                boid.spawn(BoidType.HOSTILE);
+                Game.hostiles += 1;
+            }
+            else {
+                boid.spawn(BoidType.PASSIVE);
+            }
         }
+    }
+};
+var boidInRange = function (boid, prey, after) {
+    if (prey &&
+        p5.Vector.sub(prey.position, boid.position).mag() <
+            (boid.size * 5) / 2 + (prey.size * 5) / 2) {
+        after === null || after === void 0 ? void 0 : after();
     }
 };
 var COLORS = Object.freeze({
     GREEN: "#31ff81",
     AQUA: "#00897b",
-    RED: "##fb8c00",
+    RED: "#fb8c00",
     WHITE: "#ffffff",
     DARK: "#37474f",
-    YELLOW: "#d84315",
 });
 var Point = (function () {
     function Point(x, y) {
@@ -374,13 +411,30 @@ var Game = (function () {
         Game.score = 0;
         Game.hostiles = 0;
         Game.UI = new UI();
-        __spreadArrays(Array(10)).map(function (_, i) { return new Boid(windowWidth / 2, windowHeight / 2, BoidType.PASSIVE); });
-        __spreadArrays(Array(20)).map(function () { return new Fruit(random(windowWidth), random(windowHeight)); });
+        __spreadArrays(Array(15)).forEach(function (_, i) { return new Boid(windowWidth / 2, windowHeight / 2, BoidType.PASSIVE); });
+        __spreadArrays(Array(20)).forEach(function () { return new Fruit(random(windowWidth), random(windowHeight)); });
+    };
+    Game.prototype.gameRestart = function () {
+        Game.score = 0;
+        Game.hostiles = 0;
     };
     Game.prototype.loop = function () {
-        Game.player.applyMouseSteer(2);
-        Game.player.update();
-        Game.player.wrapAround();
+        if (!Game.player.dead) {
+            Game.player.applyMouseSteer(2);
+            Game.player.update();
+            Game.player.wrapAround();
+        }
+        else {
+            Game.score = Math.max(Game.score - 1, 0);
+            Game.player.position.add(createVector(1, 1));
+            Game.player.wrapAround();
+            if (mouseIsPressed === true) {
+                Game.player.dead = false;
+                forAllBoids(function (boid) { return boid.convert(BoidType.PASSIVE); });
+                Game.score = 0;
+                Game.hostiles = 0;
+            }
+        }
         forAllBoids(function (boid) {
             if (boid.type == BoidType.PASSIVE) {
                 boid.acceleration.add(boid.baseSteer());
@@ -388,11 +442,22 @@ var Game = (function () {
                 applyAvoidPlayerSteer(boid, 3);
             }
             if (boid.type == BoidType.HOSTILE) {
-                boid.acceleration.add(boid.baseSteer([6, 2, 2]));
-                !levels[3]() && applyTowardPlayerSteer(boid, 5);
-                levels[3]() && applyAvoidPlayerSteer(boid, 6);
-                applyTowardBoidSteer(boid, 3);
-                boid.speedMult = 0.95;
+                boid.acceleration.add(levels[3]() ? boid.baseSteer() : boid.baseSteer([7, 2, 2]));
+                applyFruitSteerToBoid(boid, 2);
+                if (!Game.player.dead) {
+                    if (!levels[3]()) {
+                        applyTowardPlayerSteer(boid, 3, -1);
+                        applyTowardPlayerSteer(boid, 5);
+                    }
+                    else {
+                        applyAvoidPlayerSteer(boid, 3, 500);
+                    }
+                }
+                applyTowardBoidSteer(boid, 4);
+                var _closestPrey_1 = closestBoid(boid.position, BoidType.PASSIVE);
+                boidInRange(boid, _closestPrey_1, function () {
+                    _closestPrey_1.disable();
+                });
             }
             boid.update();
             boid.wrapAround();
@@ -413,7 +478,9 @@ var Game = (function () {
         translate(TX, TY);
         forAllBoids(function (boid) { return boid.draw(); });
         forAllFruits(function (fruit) { return fruit.draw(); });
-        Game.player.draw();
+        if (!Game.player.dead) {
+            Game.player.draw();
+        }
         pop();
         push();
         Game.score = min(Game.score, 100);
@@ -434,8 +501,9 @@ var Player = (function (_super) {
     __extends(Player, _super);
     function Player(x, y) {
         var _this = _super.call(this, x, y) || this;
+        _this.dead = true;
         _this.maxSpeed = _this.maxSpeed * 1.15;
-        _this.size = 15;
+        _this.size = 10;
         _this.color = "#CEFFC8";
         return _this;
     }
@@ -448,6 +516,7 @@ var Player = (function (_super) {
         _super.prototype.draw.call(this);
     };
     Player.prototype.update = function () {
+        this.size = getSize();
         _super.prototype.update.call(this);
         levels.map(function (fn) { return (fn() ? 1 : 0); }).reduce(function (pi, ci) { return pi + ci; }, 0);
         var _closestFruit = closestFruit(this.position);
@@ -456,40 +525,96 @@ var Player = (function (_super) {
                 _closestFruit.size) {
             _closestFruit.disable();
             if (!levels[2]()) {
-                Game.score += 8;
+                Game.score += 2;
             }
         }
-        var _closestBoid = closestBoid(this.position, BoidType.PASSIVE);
-        if (_closestBoid &&
-            p5.Vector.sub(_closestBoid.position, this.position).mag() <
-                this.size + _closestBoid.size) {
-            _closestBoid.disable();
-            if (levels[1]() && !levels[3]()) {
-                Game.score += 4;
-            }
-        }
-        var _closestHostileBoid = closestBoid(this.position, BoidType.HOSTILE);
-        if (_closestHostileBoid &&
-            p5.Vector.sub(_closestHostileBoid.position, this.position).mag() <
-                this.size + _closestHostileBoid.size) {
+        var _closestPassive = closestBoid(this.position, BoidType.PASSIVE);
+        levels[1]() &&
+            boidInRange(this, _closestPassive, function () {
+                _closestPassive.disable();
+                if (!levels[3]()) {
+                    Game.score += 3;
+                }
+            });
+        var _closestHostile = closestBoid(this.position, BoidType.HOSTILE);
+        boidInRange(this, _closestHostile, function () {
             if (levels[3]()) {
-                _closestHostileBoid.disable();
-                Game.score += 4;
+                _closestHostile.disable();
+                if (Game.score != 100) {
+                    Game.score += 3;
+                }
                 Game.hostiles -= 1;
             }
             else {
+                Game.player.dead = true;
             }
-        }
+        });
     };
     return Player;
 }(Pico));
+var getSize = function () {
+    if (levels[3]()) {
+        return 23;
+    }
+    if (levels[2]()) {
+        return 15;
+    }
+    if (levels[1]()) {
+        return 12;
+    }
+    if (levels[0]()) {
+        return 5;
+    }
+};
 var UI = (function () {
     function UI() {
     }
     UI.prototype.draw = function () {
-        this.drawFoodChain(Game.score, _levels - 1);
-        strokeWeight(1);
-        text(Game.score, 20, 20);
+        if (Game.player.dead) {
+            this.drawMenu();
+        }
+        else {
+            this.drawInfo();
+            this.drawFoodChain(Game.score, _levels - 1);
+            Game.score == 100 && this.drawVictory();
+        }
+    };
+    UI.prototype.drawInfo = function () {
+        strokeWeight(2);
+        stroke("white");
+        fill("white");
+        textSize(40);
+        textAlign(CENTER);
+        text("OBJECTIVE: SURVIVE AND THRIVE", windowWidth / 2, 100);
+    };
+    UI.prototype.drawVictory = function () {
+        strokeWeight(2);
+        stroke("white");
+        fill("white");
+        textAlign(CENTER);
+        textStyle(BOLD);
+        strokeWeight(5);
+        textSize(100);
+        text("YOU WON!", windowWidth / 2, windowHeight / 2);
+        textStyle(NORMAL);
+        noStroke();
+        textSize(40);
+        text("YOU ARE THE APEX PREDATOR", windowWidth / 2, windowHeight / 2 + 70);
+    };
+    UI.prototype.drawMenu = function () {
+        stroke("white");
+        fill("white");
+        textAlign(CENTER);
+        textStyle(BOLD);
+        strokeWeight(5);
+        textSize(100);
+        text("PICO SYSTEM", windowWidth / 2, windowHeight / 2);
+        if (Math.floor(frameCount / 50) % 2 != 0) {
+            textStyle(NORMAL);
+            noStroke();
+            textSize(40);
+            text("CLICK ANYWHERE TO START", windowWidth / 2, windowHeight / 2 + 70);
+        }
     };
     UI.prototype.drawFoodChain = function (fillAmount, classes) {
         var _x = 0;
@@ -520,7 +645,7 @@ var UI = (function () {
     return UI;
 }());
 var setEdibleBorder = function () {
-    strokeWeight(3);
+    strokeWeight(1);
     stroke(COLORS.GREEN);
 };
 var _wrapAroundMap = [

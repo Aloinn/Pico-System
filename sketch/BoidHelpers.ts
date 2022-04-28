@@ -7,9 +7,13 @@ const forAllBoids = (fn: (b: Boid) => void) => {
 };
 
 // SCARED BOID BEHAVIOUR
-const applyAvoidPlayerSteer = (boid: Boid, weight: number) => {
+const applyAvoidPlayerSteer = (
+  boid: Boid,
+  weight: number,
+  maxDistance?: number
+) => {
   if (!Game.player) return;
-  if (playerInRange(boid, 250)) {
+  if (playerInRange(boid, maxDistance || 400)) {
     const pushForce = p5.Vector.mult(
       boid.seek(Game.player.position),
       -1 * weight
@@ -20,9 +24,13 @@ const applyAvoidPlayerSteer = (boid: Boid, weight: number) => {
 };
 
 // HOSTILE BOID BEHAVIOUR
-const applyTowardPlayerSteer = (boid: Boid, weight: number) => {
+const applyTowardPlayerSteer = (
+  boid: Boid,
+  weight: number,
+  maxDistance?: number
+) => {
   if (!Game.player) return;
-  if (playerInRange(boid, 400)) {
+  if (playerInRange(boid, maxDistance || 400)) {
     const pushForce = p5.Vector.mult(
       boid.seek(Game.player.position),
       1 * weight
@@ -56,8 +64,13 @@ const applyFruitSteerToBoid = (boid: Boid, weight = 2) => {
   }
 };
 
-const playerInRange = (boid: Boid, range = 200) =>
-  p5.Vector.sub(Game.player.position, boid.position).mag() < range;
+const playerInRange = (
+  boid: Boid,
+  range = 200 // -1 = infinite range
+) =>
+  range == -1
+    ? true
+    : p5.Vector.sub(Game.player.position, boid.position).mag() < range;
 
 //
 const closestBoid = (position: p5.Vector, type: BoidType) => {
@@ -68,7 +81,7 @@ const closestBoid = (position: p5.Vector, type: BoidType) => {
       p5.Vector.sub(position, boid.position).mag() < 300
   );
   if (closeBoids.length == 0) return;
-  const _closestBoid = closeBoids.reduce(
+  return closeBoids.reduce(
     (pBoid, cBoid) =>
       p5.Vector.sub(position, pBoid.position).mag() <
       p5.Vector.sub(position, cBoid.position).mag()
@@ -76,7 +89,6 @@ const closestBoid = (position: p5.Vector, type: BoidType) => {
         : cBoid,
     closeBoids[0]
   );
-  return _closestBoid;
 };
 
 // SPAWN FRUIT
@@ -85,8 +97,23 @@ const spawnBoidRandomly = () => {
     if (Game.boidsPool.length != 0) {
       const boid = Game.boidsPool.pop();
 
-      boid.spawn(Game.hostiles < 5 ? BoidType.HOSTILE : BoidType.PASSIVE);
-      Game.hostiles += Game.hostiles < 5 ? 1 : 0;
+      if (Game.hostiles < 5) {
+        boid.spawn(BoidType.HOSTILE);
+        Game.hostiles += 1;
+      } else {
+        boid.spawn(BoidType.PASSIVE);
+      }
     }
+  }
+};
+
+// BOID EAT BOID
+const boidInRange = (boid: Pico, prey?: Pico | Boid, after?: () => void) => {
+  if (
+    prey &&
+    p5.Vector.sub(prey.position, boid.position).mag() <
+      (boid.size * 5) / 2 + (prey.size * 5) / 2
+  ) {
+    after?.();
   }
 };

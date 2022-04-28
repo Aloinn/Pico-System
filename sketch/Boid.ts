@@ -14,11 +14,9 @@ class Boid extends Pico {
   }
 
   spawn(type: BoidType) {
-    this.type = type;
     this.active = true;
-    this.color = type == BoidType.HOSTILE ? COLORS.RED : COLORS.WHITE;
-    this.size = type == BoidType.HOSTILE ? 20 : 8;
-    this.speedMult = type == BoidType.HOSTILE ? 0.7 : 1;
+    this.convert(type);
+
     while (true) {
       const pos = createVector(random(windowWidth), random(windowHeight));
       if (pos.dist(Game.player.position) > 200) {
@@ -27,6 +25,13 @@ class Boid extends Pico {
       }
     }
     // }
+  }
+
+  convert(type: BoidType) {
+    this.type = type;
+    this.color = type == BoidType.HOSTILE ? COLORS.RED : COLORS.WHITE;
+    this.size = type == BoidType.HOSTILE ? 20 : 8;
+    this.speedMult = type == BoidType.HOSTILE ? 0.9 : 1;
   }
 
   draw() {
@@ -48,7 +53,7 @@ class Boid extends Pico {
   }
 
   separateSteer(steerWeight = 1) {
-    const desiredDistance = 25.0;
+    const desiredDistance = this.size * 3; // SEPARATION BASED ON SIZE
     const friendsPosition: p5.Vector[] = [];
     const self = this;
     forAllBoids((boid) => {

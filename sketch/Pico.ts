@@ -25,7 +25,7 @@ class Pico {
     this.position.add(
       p5.Vector.div(
         p5.Vector.mult(this.velocity, 1),
-        Math.min(this.speedMult, this.size / 5)
+        Math.min(this.speedMult, this.size)
       )
     );
     this.acceleration.mult(0);
@@ -35,13 +35,38 @@ class Pico {
     forEachQuad((q) => {
       push();
       fill(this.color);
+
       translate(q.x + this.position.x, q.y + this.position.y);
-      rotate(this.velocity.heading() + radians(90));
-      beginShape();
-      vertex(0, -this.size * 2);
-      vertex(-this.size, this.size * 2);
-      vertex(this.size, this.size * 2);
-      endShape(CLOSE);
+
+      rotate(this.velocity.heading() + radians(270));
+      translate(0, -this.size * 1);
+
+      if (Math.floor(frameCount / 15) % 2 != 0) {
+        beginShape();
+        vertex(-this.size * 1.5, -this.size * 3);
+        vertex(this.size * 1.5, -this.size * 3);
+        vertex(0, -this.size * 2);
+        endShape(CLOSE);
+        beginShape();
+        vertex(0, -this.size * 2);
+        vertex(-this.size, this.size * 4);
+        vertex(0, this.size * 3);
+        vertex(this.size, this.size * 4);
+        endShape(CLOSE);
+      } else {
+        beginShape();
+        vertex(-this.size * 1.5, -this.size * 3);
+        vertex(this.size * 1.5, -this.size * 3);
+        vertex(0, -this.size * 2);
+        endShape(CLOSE);
+        beginShape();
+        vertex(0, -this.size * 2);
+        vertex(-this.size, this.size * 3);
+        vertex(0, this.size * 4);
+        vertex(this.size, this.size * 3);
+        endShape(CLOSE);
+      }
+
       pop();
     });
   }

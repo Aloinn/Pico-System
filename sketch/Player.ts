@@ -1,8 +1,9 @@
 class Player extends Pico {
+  dead = true;
   constructor(x: number, y: number) {
     super(x, y);
     this.maxSpeed = this.maxSpeed * 1.15;
-    this.size = 15;
+    this.size = 10;
     this.color = "#CEFFC8";
   }
 
@@ -25,6 +26,7 @@ class Player extends Pico {
     super.draw();
   }
   update() {
+    this.size = getSize();
     super.update();
     levels.map((fn) => (fn() ? 1 : 0)).reduce((pi, ci) => pi + ci, 0);
     // CHECK IF EAT FRUIT
@@ -36,36 +38,48 @@ class Player extends Pico {
     ) {
       _closestFruit.disable();
       if (!levels[2]()) {
-        Game.score += 8;
+        Game.score += 2;
       }
       // this.size+=1;
     }
     // CHECK IF EAT BOID
-    const _closestBoid = closestBoid(this.position, BoidType.PASSIVE);
-    if (
-      _closestBoid &&
-      p5.Vector.sub(_closestBoid.position, this.position).mag() <
-        this.size + _closestBoid.size
-    ) {
-      _closestBoid.disable();
-      if (levels[1]() && !levels[3]()) {
-        Game.score += 4;
-      }
-    }
+    const _closestPassive = closestBoid(this.position, BoidType.PASSIVE);
+    levels[1]() &&
+      boidInRange(this, _closestPassive, () => {
+        _closestPassive.disable();
+        if (!levels[3]()) {
+          Game.score += 3;
+        }
+      });
 
-    const _closestHostileBoid = closestBoid(this.position, BoidType.HOSTILE);
+    const _closestHostile = closestBoid(this.position, BoidType.HOSTILE);
 
-    if (
-      _closestHostileBoid &&
-      p5.Vector.sub(_closestHostileBoid.position, this.position).mag() <
-        this.size + _closestHostileBoid.size
-    ) {
+    boidInRange(this, _closestHostile, () => {
       if (levels[3]()) {
-        _closestHostileBoid.disable();
-        Game.score += 4;
+        // EAT
+        _closestHostile.disable();
+        if (Game.score != 100) {
+          Game.score += 3;
+        }
         Game.hostiles -= 1;
       } else {
+        Game.player.dead = true;
       }
-    }
+    });
   }
 }
+
+const getSize = () => {
+  if (levels[3]()) {
+    return 23;
+  }
+  if (levels[2]()) {
+    return 15;
+  }
+  if (levels[1]()) {
+    return 12;
+  }
+  if (levels[0]()) {
+    return 5;
+  }
+};

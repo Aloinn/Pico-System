@@ -30,8 +30,12 @@ class Fruit {
     forEachQuad((q) => {
       push();
       translate(q.x + this.position.x, q.y + this.position.y);
-      // noStroke();
-      fill("#00b894");
+      if (!levels[2]()) {
+        setEdibleBorder();
+      } else {
+        noStroke();
+      }
+      fill(COLORS.AQUA);
       circle(0, 0, this.size);
       pop();
     });
@@ -44,13 +48,6 @@ class Fruit {
       (boid) => p5.Vector.sub(boid.position, this.position).mag() < this.size
     );
     if (closeBoids.length != 0) {
-      // const boid = closeBoids[0];
-      // boid.lastAte = millis() / 1000;
-      // boid.size = Math.min(boid.size + 1, 10);
-      // // console.log(closeBoids[0].lastAte)
-      // // console.log("YUM")
-
-      // DIES LOL
       this.disable();
     }
   }

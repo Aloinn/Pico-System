@@ -34,7 +34,6 @@ class Pico {
   draw() {
     forEachQuad((q) => {
       push();
-      noStroke();
       fill(this.color);
       translate(q.x + this.position.x, q.y + this.position.y);
       rotate(this.velocity.heading() + radians(90));

@@ -20,7 +20,6 @@ var Pico = (function () {
         var _this = this;
         forEachQuad(function (q) {
             push();
-            noStroke();
             fill(_this.color);
             translate(q.x + _this.position.x, q.y + _this.position.y);
             rotate(_this.velocity.heading() + radians(90));
@@ -81,8 +80,35 @@ var Boid = (function (_super) {
     Boid.prototype.spawn = function (type) {
         this.type = type;
         this.active = true;
-        this.color = type == BoidType.HOSTILE ? "#FFB39C" : "#FFFFFF";
-        this.size = type == BoidType.HOSTILE ? 13 : 5;
+        this.color = type == BoidType.HOSTILE ? COLORS.RED : COLORS.WHITE;
+        this.size = type == BoidType.HOSTILE ? 20 : 8;
+        this.speedMult = type == BoidType.HOSTILE ? 0.7 : 1;
+        while (true) {
+            var pos = createVector(random(windowWidth), random(windowHeight));
+            if (pos.dist(Game.player.position) > 200) {
+                this.position = createVector();
+                break;
+            }
+        }
+    };
+    Boid.prototype.draw = function () {
+        if (this.type == BoidType.PASSIVE) {
+            if (levels[1]() && !levels[3]()) {
+                setEdibleBorder();
+            }
+            else {
+                noStroke();
+            }
+        }
+        if (this.type == BoidType.HOSTILE) {
+            if (levels[3]()) {
+                setEdibleBorder();
+            }
+            else {
+                noStroke();
+            }
+        }
+        _super.prototype.draw.call(this);
     };
     Boid.prototype.separateSteer = function (steerWeight) {
         var _this = this;
@@ -176,7 +202,9 @@ var Boid = (function (_super) {
     return Boid;
 }(Pico));
 var forAllBoids = function (fn) {
-    Game.boids.filter(function (boid) { return boid.active; }).forEach(function (boid) {
+    Game.boids
+        .filter(function (boid) { return boid.active; })
+        .forEach(function (boid) {
         fn(boid);
     });
 };
@@ -222,7 +250,9 @@ var playerInRange = function (boid, range) {
 };
 var closestBoid = function (position, type) {
     var closeBoids = Game.boids.filter(function (boid) {
-        return boid.type == type && p5.Vector.sub(position, boid.position).mag() < 300;
+        return boid.type == type &&
+            boid.active &&
+            p5.Vector.sub(position, boid.position).mag() < 300;
     });
     if (closeBoids.length == 0)
         return;
@@ -236,12 +266,21 @@ var closestBoid = function (position, type) {
 };
 var spawnBoidRandomly = function () {
     if (frameCount % 30 == 0) {
-        if (Game.fruitsPool.length != 0) {
-            var fruit = Game.fruitsPool.pop();
-            fruit.spawn();
+        if (Game.boidsPool.length != 0) {
+            var boid = Game.boidsPool.pop();
+            boid.spawn(Game.hostiles < 5 ? BoidType.HOSTILE : BoidType.PASSIVE);
+            Game.hostiles += Game.hostiles < 5 ? 1 : 0;
         }
     }
 };
+var COLORS = Object.freeze({
+    GREEN: "#31ff81",
+    AQUA: "#00897b",
+    RED: "##fb8c00",
+    WHITE: "#ffffff",
+    DARK: "#37474f",
+    YELLOW: "#d84315",
+});
 var Point = (function () {
     function Point(x, y) {
         this.x = x;
@@ -268,7 +307,13 @@ var Fruit = (function () {
         forEachQuad(function (q) {
             push();
             translate(q.x + _this.position.x, q.y + _this.position.y);
-            fill("#00b894");
+            if (!levels[2]()) {
+                setEdibleBorder();
+            }
+            else {
+                noStroke();
+            }
+            fill(COLORS.AQUA);
             circle(0, 0, _this.size);
             pop();
         });
@@ -326,6 +371,8 @@ var Game = (function () {
     }
     Game.prototype.init = function () {
         Game.player = new Player(windowWidth / 2 - 100, windowHeight / 2);
+        Game.score = 0;
+        Game.hostiles = 0;
         Game.UI = new UI();
         __spreadArrays(Array(10)).map(function (_, i) { return new Boid(windowWidth / 2, windowHeight / 2, BoidType.PASSIVE); });
         __spreadArrays(Array(20)).map(function () { return new Fruit(random(windowWidth), random(windowHeight)); });
@@ -341,9 +388,10 @@ var Game = (function () {
                 applyAvoidPlayerSteer(boid, 3);
             }
             if (boid.type == BoidType.HOSTILE) {
-                boid.acceleration.add(boid.baseSteer([5, 1, 1]));
-                applyTowardPlayerSteer(boid, 2);
-                applyTowardBoidSteer(boid, 4);
+                boid.acceleration.add(boid.baseSteer([6, 2, 2]));
+                !levels[3]() && applyTowardPlayerSteer(boid, 5);
+                levels[3]() && applyAvoidPlayerSteer(boid, 6);
+                applyTowardBoidSteer(boid, 3);
                 boid.speedMult = 0.95;
             }
             boid.update();
@@ -353,31 +401,41 @@ var Game = (function () {
             fruit.update();
         });
         spawnFruitRandomly();
+        spawnBoidRandomly();
     };
     Game.prototype.draw = function () {
-        console.log(mouseX, mouseY);
-        pop();
+        push();
         noFill();
-        translate(width / 2 - Game.player.position.x, height / 2 - Game.player.position.y);
+        var S = 1.9 - Game.score / 100;
+        var TX = width / S / 2 - Game.player.position.x;
+        var TY = height / S / 2 - Game.player.position.y;
+        scale(S);
+        translate(TX, TY);
         forAllBoids(function (boid) { return boid.draw(); });
         forAllFruits(function (fruit) { return fruit.draw(); });
         Game.player.draw();
-        Game.UI.draw();
+        pop();
         push();
+        Game.score = min(Game.score, 100);
+        Game.UI.draw();
+        pop();
     };
     Game.debug = false;
     Game.boids = [];
     Game.boidsPool = [];
     Game.fruits = [];
     Game.fruitsPool = [];
+    Game.score = 0;
     return Game;
 }());
+var _levels = 4;
+var levels = __spreadArrays(Array(_levels)).map(function (x, i) { return function () { return Game.score >= (i * 100) / _levels; }; });
 var Player = (function (_super) {
     __extends(Player, _super);
     function Player(x, y) {
         var _this = _super.call(this, x, y) || this;
         _this.maxSpeed = _this.maxSpeed * 1.15;
-        _this.size = 8;
+        _this.size = 15;
         _this.color = "#CEFFC8";
         return _this;
     }
@@ -385,17 +443,42 @@ var Player = (function (_super) {
         if (weight === void 0) { weight = 1; }
         this.acceleration.add(p5.Vector.mult(this.seek(p5.Vector.add(createVector(mouseX - width / 2, mouseY - height / 2), Game.player.position)), weight));
     };
+    Player.prototype.draw = function () {
+        noStroke();
+        _super.prototype.draw.call(this);
+    };
     Player.prototype.update = function () {
         _super.prototype.update.call(this);
+        levels.map(function (fn) { return (fn() ? 1 : 0); }).reduce(function (pi, ci) { return pi + ci; }, 0);
         var _closestFruit = closestFruit(this.position);
         if (_closestFruit &&
             p5.Vector.sub(_closestFruit.position, this.position).mag() <
                 _closestFruit.size) {
             _closestFruit.disable();
+            if (!levels[2]()) {
+                Game.score += 8;
+            }
         }
         var _closestBoid = closestBoid(this.position, BoidType.PASSIVE);
         if (_closestBoid &&
-            p5.Vector.sub(_closestBoid.position, this.position).mag() < this.size) {
+            p5.Vector.sub(_closestBoid.position, this.position).mag() <
+                this.size + _closestBoid.size) {
+            _closestBoid.disable();
+            if (levels[1]() && !levels[3]()) {
+                Game.score += 4;
+            }
+        }
+        var _closestHostileBoid = closestBoid(this.position, BoidType.HOSTILE);
+        if (_closestHostileBoid &&
+            p5.Vector.sub(_closestHostileBoid.position, this.position).mag() <
+                this.size + _closestHostileBoid.size) {
+            if (levels[3]()) {
+                _closestHostileBoid.disable();
+                Game.score += 4;
+                Game.hostiles -= 1;
+            }
+            else {
+            }
         }
     };
     return Player;
@@ -404,36 +487,42 @@ var UI = (function () {
     function UI() {
     }
     UI.prototype.draw = function () {
-        this.drawFoodChain(4, 4);
+        this.drawFoodChain(Game.score, _levels - 1);
+        strokeWeight(1);
+        text(Game.score, 20, 20);
     };
     UI.prototype.drawFoodChain = function (fillAmount, classes) {
-        var _x = width / classes;
+        var _x = 0;
         var Y = 40;
-        var _xoff = _x / 2;
+        var _xoff = 0;
         pop();
         var COLOR = "#4EE094";
         var WHITE = "#FFFFFF";
+        var OFF = 30;
         strokeWeight(20);
         fill(WHITE);
         stroke(WHITE);
-        line(_xoff, Y, width - _xoff, Y);
+        line(OFF, Y, width - OFF, Y);
         noStroke();
         for (var i = 0; i < classes; i += 1) {
-            circle(_x * i + _xoff, Y, 40);
+            circle(((i + 1) / (classes + 1)) * width, Y, 40);
         }
+        var BAR = width - OFF * 2;
         fill(COLOR);
         for (var i = 0; i < classes; i += 1) {
-            circle(_x * i + _xoff, Y, 30);
+            levels[i + 1]() && circle(((i + 1) / (classes + 1)) * width, Y, 30);
         }
         strokeWeight(10);
-        line(_xoff, Y, width - _xoff, Y);
-        strokeWeight(10);
         stroke(COLOR);
-        line(_xoff, Y, width - _xoff, Y);
+        line(OFF, Y, (BAR * Game.score) / 100 + OFF, Y);
         push();
     };
     return UI;
 }());
+var setEdibleBorder = function () {
+    strokeWeight(3);
+    stroke(COLORS.GREEN);
+};
 var _wrapAroundMap = [
     new Point(-1, -1),
     new Point(0, -1),
@@ -459,7 +548,7 @@ function setup() {
     Game.main.init();
 }
 function draw() {
-    background(200);
+    background(COLORS.DARK);
     noFill();
     Game.main.loop();
     Game.main.draw();

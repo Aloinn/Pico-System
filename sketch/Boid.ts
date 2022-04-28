@@ -9,7 +9,6 @@ class Boid extends Pico {
   type: BoidType;
   constructor(x: number, y: number, type: BoidType) {
     super(x, y);
-
     Game.boids.push(this);
     this.spawn(type);
   }
@@ -17,8 +16,35 @@ class Boid extends Pico {
   spawn(type: BoidType) {
     this.type = type;
     this.active = true;
-    this.color = type == BoidType.HOSTILE ? "#FFB39C" : "#FFFFFF";
-    this.size = type == BoidType.HOSTILE ? 13 : 5;
+    this.color = type == BoidType.HOSTILE ? COLORS.RED : COLORS.WHITE;
+    this.size = type == BoidType.HOSTILE ? 20 : 8;
+    this.speedMult = type == BoidType.HOSTILE ? 0.7 : 1;
+    while (true) {
+      const pos = createVector(random(windowWidth), random(windowHeight));
+      if (pos.dist(Game.player.position) > 200) {
+        this.position = createVector();
+        break;
+      }
+    }
+    // }
+  }
+
+  draw() {
+    if (this.type == BoidType.PASSIVE) {
+      if (levels[1]() && !levels[3]()) {
+        setEdibleBorder();
+      } else {
+        noStroke();
+      }
+    }
+    if (this.type == BoidType.HOSTILE) {
+      if (levels[3]()) {
+        setEdibleBorder();
+      } else {
+        noStroke();
+      }
+    }
+    super.draw();
   }
 
   separateSteer(steerWeight = 1) {

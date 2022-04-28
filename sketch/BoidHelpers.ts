@@ -97,7 +97,7 @@ const spawnBoidRandomly = () => {
     if (Game.boidsPool.length != 0) {
       const boid = Game.boidsPool.pop();
 
-      if (Game.hostiles < 5) {
+      if (Game.hostiles < 5 && levels[1]()) {
         boid.spawn(BoidType.HOSTILE);
         Game.hostiles += 1;
       } else {

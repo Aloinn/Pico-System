@@ -53,7 +53,7 @@ class Boid extends Pico {
   }
 
   separateSteer(steerWeight = 1) {
-    const desiredDistance = this.size * 3; // SEPARATION BASED ON SIZE
+    const desiredDistance = this.size * 5; // SEPARATION BASED ON SIZE
     const friendsPosition: p5.Vector[] = [];
     const self = this;
     forAllBoids((boid) => {

@@ -10,12 +10,12 @@ class UI {
   }
   // INFO
   drawInfo() {
-    strokeWeight(2);
-    stroke("white");
     fill("white");
-    textSize(40);
+    noStroke();
+    textSize(30);
     textAlign(CENTER);
-    text("OBJECTIVE: SURVIVE AND THRIVE", windowWidth / 2, 100);
+    textStyle(BOLD);
+    text(" SURVIVE AND THRIVE", windowWidth / 2, 100);
   }
 
   // DRAW VICTORY

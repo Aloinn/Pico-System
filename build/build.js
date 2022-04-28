@@ -26,28 +26,28 @@ var Pico = (function () {
             translate(0, -_this.size * 1);
             if (Math.floor(frameCount / 15) % 2 != 0) {
                 beginShape();
-                vertex(-_this.size * 1.5, -_this.size * 3);
-                vertex(_this.size * 1.5, -_this.size * 3);
+                vertex(-_this.size * 1, -_this.size * 3);
+                vertex(_this.size * 1, -_this.size * 3);
                 vertex(0, -_this.size * 2);
                 endShape(CLOSE);
                 beginShape();
                 vertex(0, -_this.size * 2);
-                vertex(-_this.size, _this.size * 4);
-                vertex(0, _this.size * 3);
-                vertex(_this.size, _this.size * 4);
+                vertex(-_this.size * 1.5, _this.size * 2);
+                vertex(0, _this.size * 1.2);
+                vertex(_this.size * 1.5, _this.size * 2);
                 endShape(CLOSE);
             }
             else {
                 beginShape();
-                vertex(-_this.size * 1.5, -_this.size * 3);
-                vertex(_this.size * 1.5, -_this.size * 3);
+                vertex(-_this.size * 1, -_this.size * 3);
+                vertex(_this.size * 1, -_this.size * 3);
                 vertex(0, -_this.size * 2);
                 endShape(CLOSE);
                 beginShape();
                 vertex(0, -_this.size * 2);
-                vertex(-_this.size, _this.size * 3);
-                vertex(0, _this.size * 4);
-                vertex(_this.size, _this.size * 3);
+                vertex(-_this.size * 1.5, _this.size * 2);
+                vertex(0, _this.size * 2.7);
+                vertex(_this.size * 1.5, _this.size * 2);
                 endShape(CLOSE);
             }
             pop();
@@ -138,7 +138,7 @@ var Boid = (function (_super) {
     Boid.prototype.separateSteer = function (steerWeight) {
         var _this = this;
         if (steerWeight === void 0) { steerWeight = 1; }
-        var desiredDistance = this.size * 3;
+        var desiredDistance = this.size * 5;
         var friendsPosition = [];
         var self = this;
         forAllBoids(function (boid) {
@@ -294,7 +294,7 @@ var spawnBoidRandomly = function () {
     if (frameCount % 30 == 0) {
         if (Game.boidsPool.length != 0) {
             var boid = Game.boidsPool.pop();
-            if (Game.hostiles < 5) {
+            if (Game.hostiles < 5 && levels[1]()) {
                 boid.spawn(BoidType.HOSTILE);
                 Game.hostiles += 1;
             }
@@ -580,12 +580,12 @@ var UI = (function () {
         }
     };
     UI.prototype.drawInfo = function () {
-        strokeWeight(2);
-        stroke("white");
         fill("white");
-        textSize(40);
+        noStroke();
+        textSize(30);
         textAlign(CENTER);
-        text("OBJECTIVE: SURVIVE AND THRIVE", windowWidth / 2, 100);
+        textStyle(BOLD);
+        text(" SURVIVE AND THRIVE", windowWidth / 2, 100);
     };
     UI.prototype.drawVictory = function () {
         strokeWeight(2);

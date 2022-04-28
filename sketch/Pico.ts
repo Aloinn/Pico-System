@@ -40,30 +40,31 @@ class Pico {
 
       rotate(this.velocity.heading() + radians(270));
       translate(0, -this.size * 1);
+      // circle(0, 0, this.size * 5);
 
       if (Math.floor(frameCount / 15) % 2 != 0) {
         beginShape();
-        vertex(-this.size * 1.5, -this.size * 3);
-        vertex(this.size * 1.5, -this.size * 3);
+        vertex(-this.size * 1, -this.size * 3);
+        vertex(this.size * 1, -this.size * 3);
         vertex(0, -this.size * 2);
         endShape(CLOSE);
         beginShape();
         vertex(0, -this.size * 2);
-        vertex(-this.size, this.size * 4);
-        vertex(0, this.size * 3);
-        vertex(this.size, this.size * 4);
+        vertex(-this.size * 1.5, this.size * 2);
+        vertex(0, this.size * 1.2);
+        vertex(this.size * 1.5, this.size * 2);
         endShape(CLOSE);
       } else {
         beginShape();
-        vertex(-this.size * 1.5, -this.size * 3);
-        vertex(this.size * 1.5, -this.size * 3);
+        vertex(-this.size * 1, -this.size * 3);
+        vertex(this.size * 1, -this.size * 3);
         vertex(0, -this.size * 2);
         endShape(CLOSE);
         beginShape();
         vertex(0, -this.size * 2);
-        vertex(-this.size, this.size * 3);
-        vertex(0, this.size * 4);
-        vertex(this.size, this.size * 3);
+        vertex(-this.size * 1.5, this.size * 2);
+        vertex(0, this.size * 2.7);
+        vertex(this.size * 1.5, this.size * 2);
         endShape(CLOSE);
       }
 

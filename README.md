@@ -1,5 +1,6 @@
 ![PICO-SYSTEM](/imgs/cover.gif)
 # <div align="center">PICO SYSTEM - RTA 222 Final Project</div>
+Boid flocking behaviour eco-system simulation web game
 ### Try out the demo!
 https://aloinn.github.io/Pico-System/
 ## <div align="center">Test Locally</div>
